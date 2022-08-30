@@ -67,6 +67,7 @@ class GraphModel:
         epochs: int = 1000,
         batch_size: int = 128,
         verbose: int = 1,
+        pad_string: str = None,
         callbacks: List[Callback] = None,
         scrub_failed_structures: bool = False,
         prev_model: str = None,
@@ -85,6 +86,7 @@ class GraphModel:
             epochs: (int) number of epochs
             batch_size: (int) training batch size
             verbose: (int) keras fit verbose, 0 no progress bar, 1 only at the epoch end and 2 every batch
+            pad_string: (str) string to add in front of callback filepath
             callbacks: (list) megnet or keras callback functions for training
             scrub_failed_structures: (bool) whether to scrub structures with failed graph computation
             prev_model: (str) file name for previously saved model
@@ -112,6 +114,7 @@ class GraphModel:
             epochs=epochs,
             batch_size=batch_size,
             verbose=verbose,
+            pad_string=pad_string,
             callbacks=callbacks,
             prev_model=prev_model,
             patience=patience,
@@ -131,6 +134,7 @@ class GraphModel:
         epochs: int = 1000,
         batch_size: int = 128,
         verbose: int = 1,
+        pad_string: str = None,
         callbacks: List[Callback] = None,
         prev_model: str = None,
         patience: int = 500,
@@ -148,6 +152,7 @@ class GraphModel:
             epochs: (int) number of epochs
             batch_size: (int) training batch size
             verbose: (int) keras fit verbose, 0 no progress bar, 1 only at the epoch end and 2 every batch
+            pad_string: (str) string to add in front of callback filepath
             callbacks: (list) megnet or keras callback functions for training
             prev_model: (str) file name for previously saved model
             patience: (int) patience for early stopping
@@ -170,7 +175,10 @@ class GraphModel:
         train_nb_atoms = [len(i["atom"]) for i in train_graphs]
         train_targets = [self.target_scaler.transform(i, j) for i, j in zip(train_targets, train_nb_atoms)]
         if (validation_graphs is not None) and (validation_targets is not None):
-            filepath = os.path.join(dirname, f"{monitor}_{{epoch:05d}}_{{{monitor}:.6f}}.hdf5")
+            partial_fpath = f"{monitor}_{{epoch:05d}}_{{{monitor}:.6f}}.hdf5"
+            if pad_string is not None:
+                partial_fpath = f"{pad_string}_" + partial_fpath
+            filepath = os.path.join(dirname, partial_fpath)
             val_nb_atoms = [len(i["atom"]) for i in validation_graphs]
             validation_targets = [self.target_scaler.transform(i, j) for i, j in zip(validation_targets, val_nb_atoms)]
             val_inputs = self.graph_converter.get_flat_data(validation_graphs, validation_targets)

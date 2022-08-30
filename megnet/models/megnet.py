@@ -167,6 +167,85 @@ class MEGNetModel(GraphModel):
         return load_model(name)
 
 
+class TLMEGNetModel(GraphModel):
+    """
+    Construct a graph network model with or without explicit atom features
+    if n_feature is specified then a general graph model is assumed,
+    otherwise a crystal graph model with z number as atom feature is assumed.
+    """
+
+    def __init__(
+        self,
+        previous_model_path,
+        n_readout_to_train: int = 1,
+        lr: float = 1e-3,
+        is_classification: bool = False,
+        loss: str = "mse",
+        metrics: List[str] = None,
+        target_scaler: Scaler = None,
+        optimizer_kwargs: Dict = {"clipnorm": 3},
+        sample_weight_mode: str = None,
+    ):
+        """
+        Args:
+            previous_model_path: MEGNet model to copy weights and architecture from
+            n_readout_to_train: (int) Models have 3 readout layers,
+                readout_0, readout_1, readout_2
+                if == 1, only train readout_2
+                if == 2, train readout_2 and readout_1
+                if == 3, train all 3
+            lr: (float) learning rate
+            is_classification: (bool) whether it is a classification task
+            loss: (object or str) loss function
+            metrics: (list or dict) List or dictionary of Keras metrics to be evaluated by the model during training
+                and testing
+            target_scaler: (object) object that exposes a "transform" and "inverse_transform" methods for transforming
+                the target values
+            optimizer_kwargs (dict): extra keywords for optimizer, for example clipnorm and clipvalue
+            sample_weight_mode (str): sample weight mode for compilation
+        """
+        # Compile the model with the optimizer
+        loss = "binary_crossentropy" if is_classification else loss
+        previous_graph_model = MEGNetModel.from_file(previous_model_path)
+        model = make_tl_model(previous_graph_model, n_readout_to_train)
+
+        opt_params = {"learning_rate": lr}
+        if optimizer_kwargs is not None:
+            opt_params.update(optimizer_kwargs)
+        model.compile(Adam(**opt_params), loss, metrics=metrics, sample_weight_mode=sample_weight_mode)
+
+        graph_converter = previous_graph_model.graph_converter
+        if target_scaler is None:
+            target_scaler = previous_graph_model.target_scaler
+
+        super().__init__(model=model, target_scaler=target_scaler, graph_converter=graph_converter)
+
+
+def make_tl_model(
+    previous_graph_model,
+    n_readout_to_train,
+):
+    """
+    Args:
+        previous_graph_model: MEGNet model to copy weights and architecture from
+        n_readout_to_train: (int) Models have 3 readout layers,
+            readout_0, readout_1, readout_2
+            if == 1, only train readout_2
+            if == 2, train readout_2 and readout_1
+            if == 3, train all 3
+    """
+    model = previous_graph_model.model
+    readout_layers_idx = [i for i, layer in enumerate(model.layers) if layer.name.startswith("readout_")]
+    readout_layers_to_train_idx = readout_layers_idx[3 - n_readout_to_train :]
+    for i, layer in enumerate(model.layers):
+        if i in readout_layers_to_train_idx:
+            is_trainable = True
+        else:
+            is_trainable = False
+        model.layers[i].trainable = is_trainable
+    return model
+
+
 def make_megnet_model(
     nfeat_edge: int = None,
     nfeat_global: int = None,

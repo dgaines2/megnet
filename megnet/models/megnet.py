@@ -129,7 +129,7 @@ class MEGNetModel(GraphModel):
         model.compile(Adam(**opt_params), loss, metrics=metrics, sample_weight_mode=sample_weight_mode)
 
         if graph_converter is None:
-            graph_converter = CrystalGraph(cutoff=4, bond_converter=GaussianDistance(np.linspace(0, 5, 100), 0.5))
+            graph_converter = CrystalGraph(cutoff=5, bond_converter=GaussianDistance(np.linspace(0, 6, 100), 0.5))
 
         super().__init__(model=model, target_scaler=target_scaler, graph_converter=graph_converter)
 

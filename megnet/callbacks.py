@@ -56,8 +56,7 @@ class ModelCheckpointMAE(Callback):
         if val_gen is None:
             raise ValueError("No validation data is provided!")
         self.verbose = verbose
-        if self.verbose > 0:
-            logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO)
         self.filepath = filepath
         self.save_best_only = save_best_only
         self.save_weights_only = save_weights_only
